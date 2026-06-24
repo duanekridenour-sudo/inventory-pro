@@ -868,7 +868,7 @@ function listenOrders() {
   if (!currentBiz) return;
   db.collection('orders')
     .where('businessId', '==', currentBiz.businessId)
-    .orderBy('orderDate', 'desc')
+//    .orderBy('orderDate', 'desc')
     .onSnapshot(snapshot => {
       orders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       // Cache locally for offline use
