@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Pro</title>
+  <meta name="theme-color" content="#1B3A5C" />
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Firebase v10 compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* ── Reset & base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:    #1B3A5C;
+      --navy-dk: #122843;
+      --teal:    #2DD4BF;
+      --teal-dk: #14B8A6;
+      --bg:      #F0F4F8;
+      --surface: #FFFFFF;
+      --text:    #1E293B;
+      --muted:   #64748B;
+      --border:  #CBD5E1;
+      --pending: #F59E0B;
+      --partial: #3B82F6;
+      --delivered: #10B981;
+      --danger:  #EF4444;
+      --radius:  10px;
+      --shadow:  0 2px 12px rgba(0,0,0,0.08);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      min-height: 100vh;
+    }
+
+    /* ── Auth screen ──────────────────────────────────── */
+    #auth-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      background: linear-gradient(145deg, var(--navy-dk) 0%, var(--navy) 100%);
+    }
+    .auth-card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .auth-logo h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -0.5px;
+    }
+    .auth-logo span {
+      color: var(--teal-dk);
+    }
+    .auth-logo p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .auth-tabs {
+      display: flex;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .auth-tab.active {
+      background: var(--navy);
+      color: #fff;
+    }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+      background: var(--surface);
+      color: var(--text);
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--teal-dk);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .btn-primary {
+      background: var(--navy);
+      color: #fff;
+      width: 100%;
+    }
+    .btn-primary:hover { background: var(--navy-dk); }
+    .btn-accent {
+      background: var(--teal);
+      color: var(--navy-dk);
+    }
+    .btn-accent:hover { background: var(--teal-dk); color: #fff; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 2px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-sm { padding: 8px 14px; font-size: 13px; }
+    .auth-error {
+      background: #FEE2E2;
+      border: 1px solid #FECACA;
+      color: var(--danger);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* ── Business setup screen ────────────────────────── */
+    #setup-screen {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      background: linear-gradient(145deg, var(--navy-dk) 0%, var(--navy) 100%);
+    }
+    .setup-card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .setup-card h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .setup-card p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    /* ── Main app layout ──────────────────────────────── */
+    #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header-left h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .header-left h1 span { color: var(--teal); }
+    .header-left p { font-size: 12px; opacity: 0.65; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .user-badge {
+      font-size: 12px;
+      background: rgba(255,255,255,0.12);
+      padding: 5px 10px;
+      border-radius: 20px;
+      opacity: 0.85;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .btn-logout {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #fff;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── Offline banner ───────────────────────────────── */
+    #offline-banner {
+      background: #FEF3C7;
+      border-bottom: 2px solid #F59E0B;
+      color: #92400E;
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+    }
+
+    /* ── Toolbar ──────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px 0;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .toolbar input[type="text"] {
+      flex: 1;
+      min-width: 160px;
+      padding: 9px 14px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+      background: var(--surface);
+    }
+    .toolbar input[type="text"]:focus { border-color: var(--teal-dk); }
+    .toolbar select {
+      padding: 9px 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .toolbar select:focus { border-color: var(--teal-dk); }
+
+    /* ── Stats bar ────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 12px;
+      padding: 14px 20px;
+      overflow-x: auto;
+    }
+    .stat-pill {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .stat-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+    .dot-pending { background: var(--pending); }
+    .dot-partial { background: var(--partial); }
+    .dot-delivered { background: var(--delivered); }
+    .dot-all { background: var(--navy); }
+
+    /* ── Order cards ──────────────────────────────────── */
+    .orders-list {
+      padding: 0 20px 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .order-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .order-card:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+    .order-card.status-pending { border-left-color: var(--pending); }
+    .order-card.status-partial  { border-left-color: var(--partial); }
+    .order-card.status-delivered { border-left-color: var(--delivered); }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .card-customer { font-weight: 700; font-size: 16px; }
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-pending  { background: #FEF3C7; color: #92400E; }
+    .badge-partial  { background: #DBEAFE; color: #1E40AF; }
+    .badge-delivered { background: #D1FAE5; color: #065F46; }
+
+    .card-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .card-meta span { display: flex; align-items: center; gap: 4px; }
+    .card-notes {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Empty state ──────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── FAB ──────────────────────────────────────────── */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--teal-dk);
+      color: var(--navy-dk);
+      font-size: 28px;
+      font-weight: 300;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(20,184,166,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 200;
+    }
+    .fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(20,184,166,0.5); }
+
+    /* ── Modal ────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,25,40,0.6);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 300;
+      padding: 0;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px 24px 40px;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h2 { font-size: 20px; font-weight: 700; color: var(--navy); }
+    .btn-close {
+      background: var(--bg);
+      border: none;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+    }
+    .btn-close:hover { background: var(--border); color: var(--text); }
+
+    /* ── Deliveries section inside modal ──────────────── */
+    .deliveries-section { margin-top: 20px; }
+    .deliveries-section h3 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .delivery-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .delivery-row input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    .delivery-row input:focus { border-color: var(--teal-dk); }
+    .delivery-row button {
+      background: #FEE2E2;
+      border: none;
+      color: var(--danger);
+      width: 32px; height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .modal-actions .btn { flex: 1; min-width: 120px; }
+
+    /* ── CSV export button ────────────────────────────── */
+    .toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+    /* ── Loading spinner ──────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Utility ──────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .mt-12 { margin-top: 12px; }
+    .text-center { text-align: center; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     AUTH SCREEN
+══════════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>Inventory<span>Pro</span></h1>
+      <p>Inventory &amp; order tracking for small business</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Create Account</button>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-primary" id="auth-btn" onclick="handleAuth()">Sign In</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     BUSINESS SETUP SCREEN (first-time users only)
+══════════════════════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <h2>Set up your business</h2>
+    <p>This only takes a moment. You can update these details later.</p>
+    <div id="setup-error" class="auth-error"></div>
+    <div class="field">
+      <label>Business Name</label>
+      <input type="text" id="setup-business-name" placeholder="Acme Supply Co." />
+    </div>
+    <button class="btn btn-primary mt-12" onclick="createBusiness()">Get Started →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════════════ -->
+<div id="app-screen">
+
+  <header>
+    <div class="header-left">
+      <h1>Inventory<span>Pro</span></h1>
+      <p id="header-business">Loading...</p>
+    </div>
+    <div class="header-right">
+      <span class="user-badge" id="header-user"></span>
+      <button class="btn-logout" onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <div id="offline-banner">⚡ Offline — changes will sync when you reconnect</div>
+
+  <div class="toolbar">
+    <input type="text" id="search-input" placeholder="Search by customer or item…" oninput="renderOrders()" />
+    <select id="status-filter" onchange="renderOrders()">
+      <option value="all">All Status</option>
+      <option value="Pending">Pending</option>
+      <option value="Partial">Partial</option>
+      <option value="Delivered">Delivered</option>
+    </select>
+    <select id="sort-select" onchange="renderOrders()">
+      <option value="date-desc">Newest First</option>
+      <option value="date-asc">Oldest First</option>
+      <option value="customer-asc">Customer A–Z</option>
+      <option value="status">Status</option>
+    </select>
+    <div class="toolbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <div class="orders-list" id="orders-list">
+    <div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <h3>Loading orders…</h3>
+    </div>
+  </div>
+
+  <button class="fab" onclick="openModal()" title="New Order">+</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ORDER MODAL
+══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">New Order</h2>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="field">
+      <label>Customer / Account</label>
+      <input type="text" id="f-customer" placeholder="Customer name" />
+    </div>
+    <div class="field">
+      <label>Item / Product</label>
+      <input type="text" id="f-item" placeholder="Product description" />
+    </div>
+    <div style="display:flex;gap:12px;">
+      <div class="field" style="flex:1">
+        <label>Quantity Ordered</label>
+        <input type="number" id="f-qty" placeholder="0" min="0" />
+      </div>
+      <div class="field" style="flex:1">
+        <label>Order Date</label>
+        <input type="date" id="f-date" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="f-status">
+        <option value="Pending">Pending</option>
+        <option value="Partial">Partial</option>
+        <option value="Delivered">Delivered</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="f-notes" rows="2" placeholder="Optional notes…" style="resize:vertical;"></textarea>
+    </div>
+
+    <!-- Deliveries -->
+    <div class="deliveries-section">
+      <h3>Deliveries</h3>
+      <div id="deliveries-container"></div>
+      <button class="btn btn-ghost btn-sm mt-12" onclick="addDeliveryRow()">+ Add Delivery</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm hidden" id="delete-btn" onclick="deleteOrder()">Delete</button>
+      <button class="btn btn-accent" onclick="saveOrder()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+// ── Firebase config ────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyB_hoAFF3i8L9JPay_fD2FPzwFHlwT6IYo",
+  authDomain: "inventory-pro-8b38c.firebaseapp.com",
+  projectId: "inventory-pro-8b38c",
+  storageBucket: "inventory-pro-8b38c.firebasestorage.app",
+  messagingSenderId: "369193221751",
+  appId: "1:369193221751:web:413e08b5490ce6fe6f5072"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── App state ──────────────────────────────────────────
+let currentUser   = null;
+let currentBiz    = null;  // { businessId, name, tier }
+let orders        = [];
+let editingOrderId = null;
+
+// ── Auth tab toggle ────────────────────────────────────
+let authMode = 'login';
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (mode === 'login' && i === 0) || (mode === 'register' && i === 1));
+  });
+  document.getElementById('auth-btn').textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+  clearAuthError();
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearAuthError() {
+  const el = document.getElementById('auth-error');
+  el.textContent = '';
+  el.style.display = 'none';
+}
+
+async function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-password').value;
+  clearAuthError();
+  if (!email || !pass) { showAuthError('Please enter your email and password.'); return; }
+  const btn = document.getElementById('auth-btn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  try {
+    if (authMode === 'login') {
+      await auth.signInWithEmailAndPassword(email, pass);
+    } else {
+      await auth.createUserWithEmailAndPassword(email, pass);
+    }
+  } catch (e) {
+    showAuthError(friendlyAuthError(e.code));
+    btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+    btn.disabled = false;
+  }
+}
+
+function friendlyAuthError(code) {
+  const map = {
+    'auth/invalid-email':         'That doesn\'t look like a valid email address.',
+    'auth/user-not-found':        'No account found with that email.',
+    'auth/wrong-password':        'Incorrect password.',
+    'auth/email-already-in-use':  'An account already exists with that email.',
+    'auth/weak-password':         'Password must be at least 6 characters.',
+    'auth/too-many-requests':     'Too many attempts. Please try again later.',
+    'auth/invalid-credential':    'Email or password is incorrect.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+}
+
+// ── Business setup ─────────────────────────────────────
+async function createBusiness() {
+  const name = document.getElementById('setup-business-name').value.trim();
+  if (!name) {
+    const el = document.getElementById('setup-error');
+    el.textContent = 'Please enter your business name.';
+    el.style.display = 'block';
+    return;
+  }
+  try {
+    const bizRef = db.collection('businesses').doc();
+    const businessId = bizRef.id;
+    await bizRef.set({
+      businessId,
+      name,
+      tier: 'standard',
+      ownerUserId: currentUser.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('users').doc(currentUser.uid).set({
+      userId: currentUser.uid,
+      businessId,
+      email: currentUser.email,
+      role: 'owner',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentBiz = { businessId, name, tier: 'standard' };
+    showApp();
+  } catch (e) {
+    const el = document.getElementById('setup-error');
+    el.textContent = 'Error creating business: ' + e.message;
+    el.style.display = 'block';
+  }
+}
+
+// ── Auth state observer ────────────────────────────────
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    showScreen('auth');
+    return;
+  }
+  currentUser = user;
+  // Load user record to get businessId
+  try {
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      // First-time user — show business setup
+      showScreen('setup');
+      return;
+    }
+    const userData = userDoc.data();
+    const bizDoc = await db.collection('businesses').doc(userData.businessId).get();
+    currentBiz = { businessId: userData.businessId, ...bizDoc.data() };
+    showApp();
+  } catch (e) {
+    showScreen('setup');
+  }
+});
+
+// ── Screen management ──────────────────────────────────
+function showScreen(name) {
+  document.getElementById('auth-screen').style.display  = name === 'auth'  ? 'flex' : 'none';
+  document.getElementById('setup-screen').style.display = name === 'setup' ? 'flex' : 'none';
+  document.getElementById('app-screen').style.display   = name === 'app'   ? 'flex' : 'none';
+}
+
+function showApp() {
+  showScreen('app');
+  document.getElementById('header-business').textContent = currentBiz.name;
+  document.getElementById('header-user').textContent = currentUser.email;
+  listenOrders();
+  monitorOnline();
+}
+
+function signOut() {
+  auth.signOut();
+  orders = [];
+  currentUser = null;
+  currentBiz  = null;
+}
+
+// ── Online/offline detection ───────────────────────────
+function monitorOnline() {
+  const banner = document.getElementById('offline-banner');
+  const update = () => { banner.style.display = navigator.onLine ? 'none' : 'block'; };
+  window.addEventListener('online',  () => { update(); syncOfflineQueue(); });
+  window.addEventListener('offline', update);
+  update();
+}
+
+// ── Offline queue ──────────────────────────────────────
+const QUEUE_KEY = 'ip_offline_queue';
+
+function enqueueOffline(op) {
+  const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+  queue.push(op);
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+}
+
+async function syncOfflineQueue() {
+  const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+  if (!queue.length) return;
+  const remaining = [];
+  for (const op of queue) {
+    try {
+      if (op.type === 'set') {
+        await db.collection(op.collection).doc(op.id).set(op.data, { merge: true });
+      } else if (op.type === 'delete') {
+        await db.collection(op.collection).doc(op.id).delete();
+      }
+    } catch (e) {
+      remaining.push(op);
+    }
+  }
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+}
+
+// ── Orders — Firestore listener ────────────────────────
+function listenOrders() {
+  if (!currentBiz) return;
+  db.collection('orders')
+    .where('businessId', '==', currentBiz.businessId)
+    .orderBy('orderDate', 'desc')
+    .onSnapshot(snapshot => {
+      orders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Cache locally for offline use
+      localStorage.setItem('ip_orders_cache_' + currentBiz.businessId, JSON.stringify(orders));
+      renderOrders();
+    }, err => {
+      // Firestore offline — load from cache
+      const cached = localStorage.getItem('ip_orders_cache_' + currentBiz.businessId);
+      if (cached) { orders = JSON.parse(cached); renderOrders(); }
+    });
+}
+
+// ── Render orders list ─────────────────────────────────
+function renderOrders() {
+  const search  = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const status  = document.getElementById('status-filter')?.value || 'all';
+  const sort    = document.getElementById('sort-select')?.value || 'date-desc';
+
+  let filtered = orders.filter(o => {
+    const matchSearch = !search ||
+      (o.customer || '').toLowerCase().includes(search) ||
+      (o.item || '').toLowerCase().includes(search);
+    const matchStatus = status === 'all' || o.status === status;
+    return matchSearch && matchStatus;
+  });
+
+  filtered.sort((a, b) => {
+    if (sort === 'date-desc')    return (b.orderDate || '') > (a.orderDate || '') ? 1 : -1;
+    if (sort === 'date-asc')     return (a.orderDate || '') > (b.orderDate || '') ? 1 : -1;
+    if (sort === 'customer-asc') return (a.customer || '').localeCompare(b.customer || '');
+    if (sort === 'status') {
+      const rank = { Pending: 0, Partial: 1, Delivered: 2 };
+      return (rank[a.status] || 0) - (rank[b.status] || 0);
+    }
+    return 0;
+  });
+
+  renderStats();
+
+  const list = document.getElementById('orders-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <h3>${orders.length ? 'No orders match your filter' : 'No orders yet'}</h3>
+      <p>${orders.length ? 'Try adjusting your search or filters.' : 'Tap + to create your first order.'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(o => {
+    const statusClass = (o.status || 'pending').toLowerCase();
+    const delivered = (o.deliveries || []).reduce((s, d) => s + (Number(d.qty) || 0), 0);
+    return `<div class="order-card status-${statusClass}" onclick="openModal('${o.id}')">
+      <div class="card-top">
+        <div class="card-customer">${esc(o.customer || '—')}</div>
+        <span class="badge badge-${statusClass}">${o.status || 'Pending'}</span>
+      </div>
+      <div class="card-meta">
+        <span>📦 ${esc(o.item || '—')}</span>
+        <span>Qty: ${o.qty || 0}${delivered ? ' · Delivered: ' + delivered : ''}</span>
+        <span>📅 ${o.orderDate || '—'}</span>
+      </div>
+      ${o.notes ? `<div class="card-notes">${esc(o.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderStats() {
+  const counts = { all: orders.length, Pending: 0, Partial: 0, Delivered: 0 };
+  orders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-pill"><span class="stat-dot dot-all"></span> All: ${counts.all}</div>
+    <div class="stat-pill"><span class="stat-dot dot-pending"></span> Pending: ${counts.Pending}</div>
+    <div class="stat-pill"><span class="stat-dot dot-partial"></span> Partial: ${counts.Partial}</div>
+    <div class="stat-pill"><span class="stat-dot dot-delivered"></span> Delivered: ${counts.Delivered}</div>
+  `;
+}
+
+// ── Modal ──────────────────────────────────────────────
+function openModal(orderId = null) {
+  editingOrderId = orderId;
+  const modal = document.getElementById('modal-overlay');
+  const deleteBtn = document.getElementById('delete-btn');
+
+  if (orderId) {
+    const o = orders.find(x => x.id === orderId);
+    if (!o) return;
+    document.getElementById('modal-title').textContent = 'Edit Order';
+    document.getElementById('f-customer').value = o.customer || '';
+    document.getElementById('f-item').value     = o.item || '';
+    document.getElementById('f-qty').value      = o.qty || '';
+    document.getElementById('f-date').value     = o.orderDate || '';
+    document.getElementById('f-status').value   = o.status || 'Pending';
+    document.getElementById('f-notes').value    = o.notes || '';
+    renderDeliveryRows(o.deliveries || []);
+    deleteBtn.classList.remove('hidden');
+  } else {
+    document.getElementById('modal-title').textContent = 'New Order';
+    document.getElementById('f-customer').value = '';
+    document.getElementById('f-item').value     = '';
+    document.getElementById('f-qty').value      = '';
+    document.getElementById('f-date').value     = todayISO();
+    document.getElementById('f-status').value   = 'Pending';
+    document.getElementById('f-notes').value    = '';
+    renderDeliveryRows([]);
+    deleteBtn.classList.add('hidden');
+  }
+  modal.classList.add('active');
+}
+
+window.closeModal = function() {
+  document.getElementById('modal-overlay').classList.remove('active');
+  editingOrderId = null;
+};
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function renderDeliveryRows(deliveries) {
+  const container = document.getElementById('deliveries-container');
+  container.innerHTML = deliveries.map((d, i) => deliveryRowHTML(i, d.date, d.qty)).join('');
+}
+
+function deliveryRowHTML(i, date = '', qty = '') {
+  return `<div class="delivery-row" id="drow-${i}">
+    <input type="date" value="${date}" placeholder="Date" />
+    <input type="number" value="${qty}" placeholder="Qty" min="0" style="max-width:90px;" />
+    <button onclick="removeDeliveryRow(${i})" title="Remove">✕</button>
+  </div>`;
+}
+
+let deliveryCount = 0;
+function addDeliveryRow() {
+  const container = document.getElementById('deliveries-container');
+  const i = deliveryCount++;
+  const div = document.createElement('div');
+  div.innerHTML = deliveryRowHTML(i);
+  container.appendChild(div.firstElementChild);
+}
+
+function removeDeliveryRow(i) {
+  document.getElementById('drow-' + i)?.remove();
+}
+
+function getDeliveries() {
+  const rows = document.querySelectorAll('#deliveries-container .delivery-row');
+  const result = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const date = inputs[0].value;
+    const qty  = Number(inputs[1].value);
+    if (date || qty) result.push({ date, qty });
+  });
+  return result;
+}
+
+// ── Save / Delete order ────────────────────────────────
+async function saveOrder() {
+  const data = {
+    businessId: currentBiz.businessId,
+    customer:   document.getElementById('f-customer').value.trim(),
+    item:       document.getElementById('f-item').value.trim(),
+    qty:        Number(document.getElementById('f-qty').value) || 0,
+    orderDate:  document.getElementById('f-date').value,
+    status:     document.getElementById('f-status').value,
+    notes:      document.getElementById('f-notes').value.trim(),
+    deliveries: getDeliveries(),
+    updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  if (!data.customer) { alert('Please enter a customer name.'); return; }
+
+  const id = editingOrderId || db.collection('orders').doc().id;
+  if (!editingOrderId) data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+  if (navigator.onLine) {
+    try {
+      await db.collection('orders').doc(id).set(data, { merge: true });
+    } catch (e) {
+      enqueueOffline({ type: 'set', collection: 'orders', id, data });
+    }
+  } else {
+    enqueueOffline({ type: 'set', collection: 'orders', id, data });
+    // Optimistic local update
+    const idx = orders.findIndex(o => o.id === id);
+    if (idx >= 0) orders[idx] = { id, ...data };
+    else orders.unshift({ id, ...data });
+    renderOrders();
+  }
+  closeModal();
+}
+
+async function deleteOrder() {
+  if (!editingOrderId) return;
+  if (!confirm('Delete this order? This cannot be undone.')) return;
+  if (navigator.onLine) {
+    try {
+      await db.collection('orders').doc(editingOrderId).delete();
+    } catch (e) {
+      enqueueOffline({ type: 'delete', collection: 'orders', id: editingOrderId });
+    }
+  } else {
+    enqueueOffline({ type: 'delete', collection: 'orders', id: editingOrderId });
+    orders = orders.filter(o => o.id !== editingOrderId);
+    renderOrders();
+  }
+  closeModal();
+}
+
+// ── CSV export ─────────────────────────────────────────
+function exportCSV() {
+  const cols = ['Customer', 'Item', 'Qty', 'OrderDate', 'Status', 'TotalDelivered', 'Notes'];
+  const rows = orders.map(o => {
+    const delivered = (o.deliveries || []).reduce((s, d) => s + (Number(d.qty) || 0), 0);
+    return [o.customer, o.item, o.qty, o.orderDate, o.status, delivered, o.notes]
+      .map(v => `"${(v ?? '').toString().replace(/"/g, '""')}"`);
+  });
+  const csv = [cols.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `orders-${todayISO()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Utility ────────────────────────────────────────────
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Kick off offline sync on load
+if (navigator.onLine) syncOfflineQueue();
+</script>
+</body>
+</html>
